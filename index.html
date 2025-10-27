@@ -1,0 +1,338 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Redde's Family Tree</title>
+<style>
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+    text-align: center;
+    margin: 0;
+    padding: 40px;
+    overflow-x: hidden;
+  }
+
+  h1 {
+    color: #2c3e50;
+    text-shadow: 1px 1px 2px #fff;
+  }
+
+  .controls {
+    margin: 20px 0;
+  }
+
+  button {
+    background: #3498db;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 14px;
+    margin: 5px;
+    cursor: pointer;
+    transition: 0.3s;
+  }
+  button:hover { background: #2980b9; }
+
+  input, select {
+    padding: 8px;
+    margin: 5px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+  }
+
+  /* ✅ Scrollable area for large trees */
+  #scrollContainer {
+    overflow: auto;
+    width: 100%;
+    height: 70vh;
+    padding: 20px;
+    box-sizing: border-box;
+    border: 2px solid rgba(0,0,0,0.1);
+    background: rgba(255,255,255,0.4);
+    position: relative;
+    margin-bottom: 20px;
+  }
+
+  /* ✅ Ensure horizontal scroll when tree expands left or right */
+  #treeContainer {
+    display: inline-block;
+    min-width: max-content;
+    margin: 0 auto;
+  }
+
+  .tree {
+    display: flex;
+    justify-content: center;
+  }
+
+  .node {
+    text-align: center;
+    position: relative;
+    margin: 20px;
+  }
+
+  .member {
+    background: #fff;
+    border: 2px solid #3498db;
+    padding: 8px 14px;
+    border-radius: 10px;
+    display: inline-block;
+    position: relative;
+    cursor: pointer;
+    transition: 0.3s;
+    font-weight: bold;
+  }
+  .member:hover { background: #3498db; color: #fff; }
+
+  .delete-btn {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: #e74c3c;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    font-size: 12px;
+    line-height: 15px;
+    cursor: pointer;
+    display: none;
+  }
+
+  .member:hover .delete-btn { display: inline-block; }
+
+  .children {
+    display: flex;
+    justify-content: center;
+    position: relative;
+    margin-top: 40px;
+  }
+
+  /* Connecting lines */
+  .node::before {
+    content: '';
+    position: absolute;
+    top: -20px;
+    left: 50%;
+    border-left: 2px solid #aaa;
+    height: 80px;
+    transform: translateX(-50%);
+  }
+
+  .children::before {
+    content: '';
+    position: absolute;
+    top: -20px;
+    left: 50%;
+    border-top: 2px solid #aaa;
+    width: 100%;
+    transform: translateX(-50%);
+  }
+
+  .children .node {
+    margin: 0 30px;
+  }
+
+  /* Hide the connecting line for the root node */
+  .root::before {
+    display: none;
+  }
+
+  /* ✅ Add Member form visible and clear */
+  #formContainer {
+    background: rgba(255,255,255,0.9);
+    padding: 20px;
+    border-radius: 10px;
+    display: inline-block;
+    margin-top: 10px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  }
+
+  #formContainer h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+  }
+
+  #formContainer input,
+  #formContainer select {
+    width: 200px;
+  }
+
+  #formContainer button {
+    background: #2ecc71;
+  }
+  #formContainer button:hover {
+    background: #27ae60;
+  }
+
+</style>
+</head>
+<body>
+
+<h1>👨‍👩‍👧 Redde's Family Tree</h1>
+
+<div class="controls">
+  <button onclick="resetTree()">🔄 Reset Tree</button>
+  <button onclick="exportTree()">💾 Export Tree</button>
+  <input type="file" id="importFile" accept=".json" onchange="importTree(event)">
+</div>
+
+<!-- ✅ Scrollable tree area -->
+<div id="scrollContainer">
+  <div id="treeContainer" class="tree"></div>
+</div>
+
+<!-- ✅ Always visible Add Member form -->
+<div id="formContainer">
+  <h3>Add Family Member</h3>
+  <input type="text" id="name" placeholder="Name" required>
+  <br>
+  <select id="parentSelect"></select>
+  <br>
+  <button onclick="addMember()">➕ Add Member</button>
+</div>
+
+<script>
+  // Load or initialize family data
+  let family = JSON.parse(localStorage.getItem('familyTree')) || {
+    name: "Grandparent",
+    children: [
+      { name: "Parent 1", children: [
+        { name: "Child 1", children: [] },
+        { name: "Child 2", children: [] }
+      ]},
+      { name: "Parent 2", children: [] }
+    ]
+  };
+
+  // Recursive rendering of nodes
+  function renderNode(node, isRoot = false) {
+    let html = `
+      <div class="node ${isRoot ? 'root' : ''}">
+        <div class="member" onclick="editName('${node.name}')">
+          ${node.name}
+          <button class="delete-btn" onclick="deleteMember('${node.name}', event)">×</button>
+        </div>
+    `;
+    if (node.children.length > 0) {
+      html += `<div class="children">`;
+      node.children.forEach(child => html += renderNode(child));
+      html += `</div>`;
+    }
+    html += `</div>`;
+    return html;
+  }
+
+  function displayTree() {
+    document.getElementById("treeContainer").innerHTML = renderNode(family, true);
+    updateParentSelect();
+    saveTree();
+  }
+
+  function updateParentSelect() {
+    const select = document.getElementById("parentSelect");
+    select.innerHTML = "";
+    getAllNames(family).forEach(name => {
+      const opt = document.createElement("option");
+      opt.value = name;
+      opt.textContent = "Add under: " + name;
+      select.appendChild(opt);
+    });
+  }
+
+  function getAllNames(node) {
+    let names = [node.name];
+    node.children.forEach(child => names = names.concat(getAllNames(child)));
+    return names;
+  }
+
+  function addMember() {
+    const name = document.getElementById("name").value.trim();
+    const parentName = document.getElementById("parentSelect").value;
+    if (!name) return alert("Enter a name!");
+    addChild(family, parentName, name);
+    document.getElementById("name").value = "";
+    displayTree();
+  }
+
+  function addChild(node, parentName, childName) {
+    if (node.name === parentName) {
+      node.children.push({ name: childName, children: [] });
+      return true;
+    }
+    for (let child of node.children) {
+      if (addChild(child, parentName, childName)) return true;
+    }
+    return false;
+  }
+
+  function editName(oldName) {
+    const newName = prompt("Edit name:", oldName);
+    if (newName && newName.trim() !== "") {
+      renameMember(family, oldName, newName.trim());
+      displayTree();
+    }
+  }
+
+  function renameMember(node, oldName, newName) {
+    if (node.name === oldName) {
+      node.name = newName;
+      return true;
+    }
+    for (let child of node.children) {
+      if (renameMember(child, oldName, newName)) return true;
+    }
+    return false;
+  }
+
+  function deleteMember(name, event) {
+    event.stopPropagation();
+    if (confirm(`Delete ${name} and all their descendants?`)) {
+      removeMember(family, name);
+      displayTree();
+    }
+  }
+
+  function removeMember(node, name) {
+    node.children = node.children.filter(child => child.name !== name);
+    node.children.forEach(child => removeMember(child, name));
+  }
+
+  function saveTree() {
+    localStorage.setItem("familyTree", JSON.stringify(family));
+  }
+
+  function resetTree() {
+    if (confirm("Are you sure you want to reset the tree?")) {
+      localStorage.removeItem("familyTree");
+      location.reload();
+    }
+  }
+
+  function exportTree() {
+    const blob = new Blob([JSON.stringify(family, null, 2)], { type: 'application/json' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'familyTree.json';
+    link.click();
+  }
+
+  function importTree(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      family = JSON.parse(e.target.result);
+      displayTree();
+    };
+    reader.readAsText(file);
+  }
+
+  displayTree();
+</script>
+
+</body>
+</html>
