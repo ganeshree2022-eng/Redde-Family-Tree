@@ -111,7 +111,7 @@
     margin-top: 40px;
   }
 
-  /* Connecting lines */
+  /* Draw connecting lines between levels */
   .node::before {
     content: '';
     position: absolute;
@@ -136,9 +136,18 @@
     margin: 0 30px;
   }
 
-  /* Hide the connecting line for the root node */
-  .root::before {
-    display: none;
+  #formContainer {
+    background: rgba(255,255,255,0.8);
+    padding: 15 px;
+    border-radius: 10px;
+    display: inline-block;
+    margin-top: 20px;
+  }
+
+  #formContainer h3 {
+    margin-top: 0;
+  }
+
   }
 
   /* ✅ Add Member form visible and clear */
